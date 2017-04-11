@@ -2,9 +2,12 @@
 //
 
 #include "stdafx.h"
+#include "hash-library\sha256.h"
+
 #include <winsock2.h>
 #include <stdio.h>
 #include <cstdint>
+#include <iostream> // for std::cout only, not needed for hashing library
 
 #pragma comment (lib, "ws2_32.lib")
 #pragma warring(disable: 4996)
@@ -13,27 +16,58 @@
 #define PACKET_MAX_LEN	1024
 #define IP_ADDRESS "127.0.0.1"
 #define PATH_MAX_LEN 256
+#define SHA256_SIZE 64
+
+#define _CRT_SECURE_NO_WARNINGS 1
 
 int server_mode();
 int client_mode();
-void InitWinsock();
-void InitWinsock();
-int sizeOfFile();
-
-void InitWinsock()
-{
-	WSADATA wsaData;
-	if (WSAStartup(MAKEWORD(2, 1), &wsaData) != 0)
-	{
-		printf("Failed. Error Code : %d", WSAGetLastError());
-		exit(EXIT_FAILURE);
-	}
-	printf("Initialised.\n");
-}
-
+void init_winsock();
+void init_winsock();
+int get_file_size(const char* fname);
+void get_sha256(const char * buffer, size_t size_of_buffer, char *result);
+char* compute_sha256(const char *fname);
 
 int main()
 {
+	const char* buffer = "How are you";
+	//char *result = (char*)calloc(sizeof(char), SHA256_SIZE);
+	//free(result);
+	char * result = compute_sha256("test.txt");
+	
+	printf("is: ");
+	for (int i = 0; i < SHA256_SIZE; i++) {
+		printf("%c", result[i]);
+	}
+	printf("\n");
+	// => 9c7d5b046878838da72e40ceb3179580958df544b240869b80d0275cc07209cc
+	//free(result);
+	char c;
+	scanf("%c", &c);
+	return 0;
+	//int ret = start_it();
+	//return ret;
+}
+
+void get_sha256(const char * buffer, size_t size_of_buffer,char *result) {
+	SHA256 sha256;
+	std::string tmp = sha256(buffer, size_of_buffer);
+	strcpy(result, tmp.c_str());
+}
+
+char* compute_sha256(const char *fname) {
+	int fsize = get_file_size(fname);
+	char * file = (char*)calloc(sizeof(char), fsize);
+	FILE *fp = fopen(fname, "rb");
+	if (!fp) exit(100);
+
+	fread(file, fsize, 1, fp);
+	char* sha256 = (char*)calloc(sizeof(char), SHA256_SIZE);
+	get_sha256(file, fsize, sha256);
+	return sha256;
+}
+
+int start_it() {
 	printf("1 - for client mode\n2 - for server mode\n");
 	char option;
 	scanf("%c", &option);
@@ -60,7 +94,18 @@ int main()
 	return EXIT_SUCCESS;
 }
 
-int sizeOfFile(const char* fname)
+void init_winsock()
+{
+	WSADATA wsaData;
+	if (WSAStartup(MAKEWORD(2, 1), &wsaData) != 0)
+	{
+		printf("Failed. Error Code : %d", WSAGetLastError());
+		exit(EXIT_FAILURE);
+	}
+	printf("Initialised.\n");
+}
+
+int get_file_size(const char* fname)
 {
 	FILE *fp = fopen(fname, "rb");
 	if (!fp) return -1;
@@ -76,7 +121,7 @@ int client_mode()
 {
 	SOCKET socketC;
 
-	InitWinsock();
+	init_winsock();
 	struct sockaddr_in serverInfo;
 	int len = sizeof(serverInfo);
 	serverInfo.sin_family = AF_INET;
@@ -89,11 +134,8 @@ int client_mode()
 	char fname[PATH_MAX_LEN];
 	ZeroMemory(fname, sizeof(fname));
 
-	scanf("%s", fname);
-
-	//int fsize = 10;
 	//Wrong name
-	int fsize = sizeOfFile(fname);
+	int fsize = get_file_size(fname);
 	if (fsize == -1)
 	{
 		printf("Wrong file path!");
@@ -101,7 +143,15 @@ int client_mode()
 		return EXIT_FAILURE;
 	}
 
+	FILE *fp = fopen(fname, "rb");
+	if (!fp)
+	{
+		printf("File reading error\n");
+		return EXIT_FAILURE;
+	}
+
 	char buffer[PACKET_MAX_LEN];
+
 
 	strcpy(buffer, "NAME=");
 	strcat(buffer, fname);
@@ -119,6 +169,9 @@ int client_mode()
 	printf("%s\n", buffer);
 	sendto(socketC, buffer, sizeof(buffer), 0, (sockaddr*)&serverInfo, len);
 	ZeroMemory(buffer, sizeof(buffer));
+	
+	//send sha256
+	
 
 	//send START
 	strcpy(buffer, "START");
@@ -126,12 +179,7 @@ int client_mode()
 	sendto(socketC, buffer, sizeof(buffer), 0, (sockaddr*)&serverInfo, len);
 	ZeroMemory(buffer, sizeof(buffer));
 
-	FILE *fp = fopen(fname, "rb");
-	if (!fp)
-	{
-		printf("File reading error\n");
-		return EXIT_FAILURE;
-	}
+
 	int data_to_read = fsize;
 	uint32_t fposition = ftell(fp);
 	while (!feof(fp) && fposition < fsize)
@@ -168,10 +216,6 @@ int client_mode()
 			data[data_to_read + 1] = '\0';
 		}
 		strcat(buffer, data);
-
-		//buffer[PACKET_MAX_LEN - 2] = '}';
-		//buffer[PACKET_MAX_LEN -1] = '\0';
-		//printf("%s\n", buffer);
 		int bracket = 0;
 		for (int i = 0; i<PACKET_MAX_LEN; i++)
 		{
@@ -209,7 +253,7 @@ int server_mode()
 
 	SOCKET socketS;
 
-	InitWinsock();
+	init_winsock();
 	struct sockaddr_in local;
 	struct sockaddr_in from;
 	int fromlen = sizeof(from);
