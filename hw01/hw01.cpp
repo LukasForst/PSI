@@ -1,37 +1,18 @@
-// cplusProject.cpp : Defines the entry point for the console application.
-//
-
 #include "stdafx.h"
-#include "hash-library\sha256.h"
-#include "hash-library\crc32.h"
-#include <winsock2.h>
-#include <stdio.h>
-#include <cstdint>
-#include <iostream> // for std::cout only, not needed for hashing library
 
-#pragma comment (lib, "ws2_32.lib")
-#pragma warring(disable: 4996)
-
-#define PORT 4000
-#define PACKET_MAX_LEN	1024
-#define IP_ADDRESS "127.0.0.1"
-#define PATH_MAX_LEN 256
-#define SHA256_SIZE 64
-
-#define _CRT_SECURE_NO_WARNINGS 1
-
-int start_it();
-int server_mode();
-int client_mode();
-void init_winsock();
-void init_winsock();
-int get_file_size(const char* fname);
-char* compute_sha256(const char *fname);
+#define DEBUG 1
 
 int main()
 {
+	char *hash = compute_crc32("Hello World");
 
-	int return_value = start_it();
+	for (int i = 0; i < 8; i++) {
+		printf("%c", hash[i]);
+	} 
+	printf("\n");
+
+
+	int return_value = DEBUG ? 0 : start_it();
 	printf("Hit Enter to end...");
 	char wait_for_enter;
 	scanf("%c", &wait_for_enter);
@@ -39,8 +20,16 @@ int main()
 	//int ret = start_it();
 	//return ret;
 }
+//need to be freed
+char * compute_crc32(const char* data) {
+	CRC32 crc32;
+	std::string myHash = crc32(data);     // std::string
+	char *hash = (char*)calloc(sizeof(char), CRC32_SIZE);
+	strcpy(hash, myHash.c_str());
+	return hash;
+}
 
-
+//need to be freed
 char* compute_sha256(const char *fname) {
 	int fsize = get_file_size(fname);
 	char * file = (char*)calloc(sizeof(char), fsize);
@@ -171,7 +160,6 @@ int client_mode()
 	printf("%s\n", buffer);
 	sendto(socketC, buffer, sizeof(buffer), 0, (sockaddr*)&serverInfo, len);
 	ZeroMemory(buffer, sizeof(buffer));
-
 
 	//send START
 	strcpy(buffer, "START");
