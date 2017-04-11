@@ -6,9 +6,7 @@
 #pragma once
 
 #include "targetver.h"
-#include "hash-library\sha256.h"
-#include "hash-library\crc32.h"
-
+#include "crypto.h"
 
 #include <stdio.h>
 #include <tchar.h>
@@ -25,17 +23,11 @@
 #define IP_ADDRESS "127.0.0.1"
 #define PATH_MAX_LEN 256
 
-#define SHA256_SIZE 64
-#define CRC32_SIZE 8
-
 #define _CRT_SECURE_NO_WARNINGS 1
 
 
-int start_it();
 int server_mode();
 int client_mode();
-void init_winsock();
+
 void init_winsock();
 int get_file_size(const char* fname);
-char * compute_sha256(const char *fname);
-char * compute_crc32(const char* data);
