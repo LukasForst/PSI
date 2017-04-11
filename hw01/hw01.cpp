@@ -3,7 +3,7 @@
 
 #include "stdafx.h"
 #include "hash-library\sha256.h"
-
+#include "hash-library\crc32.h"
 #include <winsock2.h>
 #include <stdio.h>
 #include <cstdint>
@@ -18,9 +18,6 @@
 #define PATH_MAX_LEN 256
 #define SHA256_SIZE 64
 
-#define TRUE 1
-#define FALSE 0
-
 #define _CRT_SECURE_NO_WARNINGS 1
 
 int start_it();
@@ -29,37 +26,34 @@ int client_mode();
 void init_winsock();
 void init_winsock();
 int get_file_size(const char* fname);
-void get_sha256(const char * buffer, size_t size_of_buffer, char *result);
 char* compute_sha256(const char *fname);
 
 int main()
 {
 
-	start_it();
-	char c;
-	scanf("%c", &c);
-	return 0;
+	int return_value = start_it();
+	printf("Hit Enter to end...");
+	char wait_for_enter;
+	scanf("%c", &wait_for_enter);
+	return return_value;
 	//int ret = start_it();
 	//return ret;
 }
 
-void get_sha256(const char * buffer, size_t size_of_buffer,char *result) {
-	SHA256 sha256;
-	std::string tmp = sha256(buffer, size_of_buffer);
-	strcpy(result, tmp.c_str());
-}
 
 char* compute_sha256(const char *fname) {
 	int fsize = get_file_size(fname);
 	char * file = (char*)calloc(sizeof(char), fsize);
 	FILE *fp = fopen(fname, "rb");
 	if (!fp) exit(100);
-
 	fread(file, fsize, 1, fp);
-	char* sha256 = (char*)calloc(sizeof(char), SHA256_SIZE);
-	get_sha256(file, fsize, sha256);
+
+	SHA256 sha256;
+	char* result = (char*)calloc(sizeof(char), SHA256_SIZE);
+	std::string tmp = sha256(file, fsize);
+	strcpy(result, tmp.c_str());
 	free(file);
-	return sha256;
+	return result;
 }
 
 int verify_sha256(const char*fname, const char* received_sha256) {
@@ -242,13 +236,12 @@ int client_mode()
 		fposition = ftell(fp);
 	}
 	fclose(fp);
-	//send START
+	//send STOP
 	strcpy(buffer, "STOP");
 	printf("%s\n", buffer);
 	sendto(socketC, buffer, sizeof(buffer), 0, (sockaddr*)&serverInfo, len);
 	ZeroMemory(buffer, sizeof(buffer));
 
-	scanf("%s", fname);
 	closesocket(socketC);
 	return EXIT_SUCCESS;
 
@@ -368,10 +361,5 @@ int server_mode()
 	}
 	
 	if (fname) free(fname);
-
-
-	printf("Hit Enter to end...");
-	char wait_for_enter;
-	scanf("%c", &wait_for_enter);
 	return EXIT_SUCCESS;
 }
