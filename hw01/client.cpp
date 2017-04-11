@@ -2,6 +2,7 @@
 
 int client_mode()
 {
+	char packet[PACKET_MAX_LEN + CRC32_SIZE];
 	SOCKET socketC;
 
 	init_winsock();
@@ -32,16 +33,19 @@ int client_mode()
 		printf("File reading error\n");
 		return EXIT_FAILURE;
 	}
-
 	char buffer[PACKET_MAX_LEN];
-
-
+	
+	//sedn file name
 	strcpy(buffer, "NAME=");
 	strcat(buffer, fname);
-	printf("%s\n", buffer);
-	//send file name
-	sendto(socketC, buffer, sizeof(buffer), 0, (sockaddr*)&serverInfo, len);
+	//crc
+	char * crc = compute_crc32(buffer);
+	strcpy(packet, crc);
+	strcat(packet, buffer);
+	printf("%s -- %s\n", crc, buffer);
+	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
 	ZeroMemory(buffer, sizeof(buffer));
+	ZeroMemory(packet, sizeof(packet));
 
 	//send size
 	strcpy(buffer, "SIZE=");
@@ -49,31 +53,45 @@ int client_mode()
 	char fsizeString[sizeof(int) * 3 + 2];
 	snprintf(fsizeString, sizeof fsizeString, "%d", fsize);
 	strcat(buffer, fsizeString);
-	printf("%s\n", buffer);
-	sendto(socketC, buffer, sizeof(buffer), 0, (sockaddr*)&serverInfo, len);
+	//crc
+	crc = compute_crc32(buffer);
+	strcpy(packet, crc);
+	strcat(packet, buffer);
+	printf("%s -- %s\n",crc, buffer);
+	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
 	ZeroMemory(buffer, sizeof(buffer));
+	ZeroMemory(packet, sizeof(packet));
 
 	//send sha256
 	char *sha256 = compute_sha256(fname);
 	strcpy(buffer, "SHA256=");
 	strcat(buffer, sha256);
-	printf("%s\n", buffer);
-	sendto(socketC, buffer, sizeof(buffer), 0, (sockaddr*)&serverInfo, len);
+	//crc
+	crc = compute_crc32(buffer);
+	strcpy(packet, crc);
+	strcat(packet, buffer);
+	printf("%s -- %s\n", crc, buffer);
+	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
 	ZeroMemory(buffer, sizeof(buffer));
-
+	ZeroMemory(packet, sizeof(packet));
+	
 	//send START
 	strcpy(buffer, "START");
-	printf("%s\n", buffer);
-	sendto(socketC, buffer, sizeof(buffer), 0, (sockaddr*)&serverInfo, len);
+	//crc
+	crc = compute_crc32(buffer);
+	strcpy(packet, crc);
+	strcat(packet, buffer);
+	printf("%s -- %s\n", crc, buffer);
+	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
 	ZeroMemory(buffer, sizeof(buffer));
-
+	ZeroMemory(packet, sizeof(packet));
 
 	int data_to_read = fsize;
 	uint32_t fposition = ftell(fp);
 	while (!feof(fp) && fposition < fsize)
 	{
 		strcpy(buffer, "DATA{");
-		//weird workaround
+		//weird workaround	
 		FILE *tmp = fopen("tmp.txt", "wb");
 		fwrite(&fposition, sizeof(uint32_t), 1, tmp);
 		fclose(tmp);
@@ -87,7 +105,7 @@ int client_mode()
 			buffer[i + 5] = tmpData[i];
 		}
 		fclose(read);
-
+		
 		strcat(buffer, "}{");
 		char data[PACKET_MAX_LEN - 11];
 		if (data_to_read > PACKET_MAX_LEN - 14)
@@ -104,31 +122,27 @@ int client_mode()
 			data[data_to_read + 1] = '\0';
 		}
 		strcat(buffer, data);
-		int bracket = 0;
-		for (int i = 0; i<PACKET_MAX_LEN; i++)
-		{
-			if (buffer[i] == '}') bracket++;
-			if (bracket >= 2)
-			{
-				printf("%c", buffer[i]);
-
-				break;
-			}
-			printf("%c", buffer[i]);
-		}
-
-		printf("\n");
-		//send socket
-		sendto(socketC, buffer, sizeof(buffer), 0, (sockaddr*)&serverInfo, len);
+		//crc
+		crc = compute_crc32(buffer);
+		strcpy(packet, crc);
+		strcat(packet, buffer);
+		printf("%s -- %s\n", crc, buffer);
+		sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
 		ZeroMemory(buffer, sizeof(buffer));
+		ZeroMemory(packet, sizeof(packet));
+
 		fposition = ftell(fp);
 	}
 	fclose(fp);
 	//send STOP
 	strcpy(buffer, "STOP");
-	printf("%s\n", buffer);
-	sendto(socketC, buffer, sizeof(buffer), 0, (sockaddr*)&serverInfo, len);
+	crc = compute_crc32(buffer);
+	strcpy(packet, crc);
+	strcat(packet, buffer);
+	printf("%s -- %s\n", crc, buffer);
+	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
 	ZeroMemory(buffer, sizeof(buffer));
+	ZeroMemory(packet, sizeof(packet));
 
 	closesocket(socketC);
 	return EXIT_SUCCESS;

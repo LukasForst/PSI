@@ -28,6 +28,18 @@ char* compute_sha256(const char *fname) {
 
 int verify_sha256(const char*fname, const char* received_sha256) {
 	char *file_sha256 = compute_sha256(fname);
-	return strcmp(file_sha256, received_sha256);
+	for (int i = 0; i < SHA256_SIZE; i++) {
+		if (file_sha256[i] != received_sha256[i])
+			return -1;
+	}
+	return 0;
 }
 
+int verify_crc32(const char*given_crc, const char* buffer) {
+	char * new_crc = compute_crc32(buffer);
+	for (int i = 0; i < CRC32_SIZE; i++) {
+		if (new_crc[i] != given_crc[i])
+			return -1;
+	}
+	return 0;
+}

@@ -24,11 +24,26 @@ int server_mode()
 	FILE *fp;
 	while (true)
 	{
-		char buffer[PACKET_MAX_LEN];
+		char packet[PACKET_MAX_LEN + CRC32_SIZE];
 		//fill it with zeros
-		ZeroMemory(buffer, sizeof(buffer));
-		if (recvfrom(socketS, buffer, sizeof(buffer), 0, (sockaddr*)&from, &fromlen) != SOCKET_ERROR)
+		ZeroMemory(packet, sizeof(packet));
+		if (recvfrom(socketS, packet, sizeof(packet), 0, (sockaddr*)&from, &fromlen) != SOCKET_ERROR)
 		{
+			//compute crc
+			char crc[CRC32_SIZE];
+			for (int i = 0; i < CRC32_SIZE; i++) {
+				printf("%c", packet[i]);
+				crc[i] = packet[i];
+			}
+			printf(" -- ");
+			char buffer[PACKET_MAX_LEN];
+			ZeroMemory(buffer, sizeof(buffer));
+
+			//make buffer, without crc
+			for (int i = 0; i < PACKET_MAX_LEN; i++) {
+				buffer[i] = packet[i + CRC32_SIZE];
+			}
+			//parse data
 			int stringLen = strlen(buffer);
 			if (strstr(buffer, "NAME"))
 			{
@@ -52,11 +67,16 @@ int server_mode()
 				free(file_size);
 			}
 			else if (strstr(buffer, "STOP")) {
+				printf("STOP\n");
 				break;
 			}
 			else if (strstr(buffer, "DATA"))
 			{
 				fp = fopen(fname, "ab");
+				if (!fp) {
+					printf("FILE ERROR!!\n");
+					return EXIT_FAILURE;
+				}
 				char *received_data = (char*)calloc(stringLen, sizeof(char));
 				if (!received_data) {
 					printf("MEMORY ERROR");
@@ -86,7 +106,6 @@ int server_mode()
 					}
 				}
 				int whence = atoi(ptr);
-				printf("PTR - %i\n", whence);
 				fseek(fp, 0, whence);
 				fwrite(received_data, idx, 1, fp);
 				free(received_data);
@@ -99,20 +118,15 @@ int server_mode()
 					sha256[i] = buffer[i + 7];
 				}
 			}
-
 			printf("%s\n", buffer);
+			printf("Verify CRC: %d\n", verify_crc32(crc, buffer));
 		}
 	}
 	fclose(fp);
 	closesocket(socketS);
 
-	if (verify_sha256(fname, sha256)) {
-		printf("Transfer OK!\n");
-	}
-	else {
-		printf("Transfer ERROR!\n");
-	}
+	printf("Transfer: %d\n", verify_sha256(fname, sha256));
 
-	if (fname) free(fname);
+	//if (fname) free(fname);
 	return EXIT_SUCCESS;
 }

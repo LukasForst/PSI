@@ -9,3 +9,4 @@ char * compute_sha256(const char *fname);
 char * compute_crc32(const char* data);
 
 int verify_sha256(const char*fname, const char* received_sha256);
+int verify_crc32(const char*given_crc, const char* buffer);
