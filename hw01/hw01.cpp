@@ -18,8 +18,12 @@
 #define PATH_MAX_LEN 256
 #define SHA256_SIZE 64
 
+#define TRUE 1
+#define FALSE 0
+
 #define _CRT_SECURE_NO_WARNINGS 1
 
+int start_it();
 int server_mode();
 int client_mode();
 void init_winsock();
@@ -30,18 +34,8 @@ char* compute_sha256(const char *fname);
 
 int main()
 {
-	const char* buffer = "How are you";
-	//char *result = (char*)calloc(sizeof(char), SHA256_SIZE);
-	//free(result);
-	char * result = compute_sha256("test.txt");
-	
-	printf("is: ");
-	for (int i = 0; i < SHA256_SIZE; i++) {
-		printf("%c", result[i]);
-	}
-	printf("\n");
-	// => 9c7d5b046878838da72e40ceb3179580958df544b240869b80d0275cc07209cc
-	//free(result);
+
+	start_it();
 	char c;
 	scanf("%c", &c);
 	return 0;
@@ -64,7 +58,13 @@ char* compute_sha256(const char *fname) {
 	fread(file, fsize, 1, fp);
 	char* sha256 = (char*)calloc(sizeof(char), SHA256_SIZE);
 	get_sha256(file, fsize, sha256);
+	free(file);
 	return sha256;
+}
+
+int verify_sha256(const char*fname, const char* received_sha256) {
+	char *file_sha256 = compute_sha256(fname);
+	return strcmp(file_sha256, received_sha256);
 }
 
 int start_it() {
@@ -133,7 +133,7 @@ int client_mode()
 	printf("File path: ");
 	char fname[PATH_MAX_LEN];
 	ZeroMemory(fname, sizeof(fname));
-
+	scanf("%s", fname);
 	//Wrong name
 	int fsize = get_file_size(fname);
 	if (fsize == -1)
@@ -171,7 +171,13 @@ int client_mode()
 	ZeroMemory(buffer, sizeof(buffer));
 	
 	//send sha256
-	
+	char *sha256 = compute_sha256(fname);
+	strcpy(buffer, "SHA256=");
+	strcat(buffer, sha256);
+	printf("%s\n", buffer);
+	sendto(socketC, buffer, sizeof(buffer), 0, (sockaddr*)&serverInfo, len);
+	ZeroMemory(buffer, sizeof(buffer));
+
 
 	//send START
 	strcpy(buffer, "START");
@@ -267,6 +273,7 @@ int server_mode()
 	bind(socketS, (sockaddr*)&local, sizeof(local));
 
 	char *fname = nullptr;
+	char sha256[SHA256_SIZE];
 	int fsize;
 	FILE *fp;
 	while (true)
@@ -284,7 +291,6 @@ int server_mode()
 				{
 					fname[i] = buffer[i + 5];
 				}
-				printf("NAME=%s\n", fname);
 				fp = fopen(fname, "wb");
 				Sleep(50);
 				if (fp) fclose(fp);
@@ -298,7 +304,6 @@ int server_mode()
 				}
 				fsize = atoi(file_size);
 				free(file_size);
-				printf("SIZE=%i\n", fsize);
 			}
 			else if (strstr(buffer, "STOP")) {
 				break;
@@ -341,13 +346,27 @@ int server_mode()
 				free(received_data);
 				fclose(fp);
 			}
+			//SHA256=
+			else if (strstr(buffer, "SHA256")) 
+			{
+				for (int i = 0; i < SHA256_SIZE; i++) {
+					sha256[i] = buffer[i + 7];
+				}
+			}
 
 			printf("%s\n", buffer);
 		}
 	}
 	fclose(fp);
 	closesocket(socketS);
-
+	
+	if (verify_sha256(fname, sha256)) {
+		printf("Transfer OK!\n");
+	}
+	else {
+		printf("Transfer ERROR!\n");
+	}
+	
 	if (fname) free(fname);
 
 
