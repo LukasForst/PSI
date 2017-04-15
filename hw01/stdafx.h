@@ -18,10 +18,14 @@
 #pragma comment (lib, "ws2_32.lib")
 #pragma warring(disable: 4996)
 
-#define PORT 4000
 #define PACKET_MAX_LEN	1024
-#define IP_ADDRESS "127.0.0.1"
 #define PATH_MAX_LEN 256
+
+#define IP_ADDRESS_SERVER "127.0.0.1"
+#define PORT_SERVER 4000
+
+#define IP_ADDRESS_CLIENT "127.0.0.1"
+#define PORT_CLIENT 4001
 
 #define _CRT_SECURE_NO_WARNINGS 1
 

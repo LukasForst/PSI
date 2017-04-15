@@ -12,7 +12,7 @@ int server_mode()
 
 	//set outcomming socket
 	local.sin_family = AF_INET;
-	local.sin_port = htons(PORT);
+	local.sin_port = htons(PORT_SERVER);
 	local.sin_addr.s_addr = INADDR_ANY;
 
 	socketS = socket(AF_INET, SOCK_DGRAM, 0);
@@ -26,8 +26,8 @@ int server_mode()
 	while (true)
 	{
 		char packet[PACKET_MAX_LEN + CRC32_SIZE];
-		//fill it with zeros
 		ZeroMemory(packet, sizeof(packet));
+
 		if (recvfrom(socketS, packet, sizeof(packet), 0, (sockaddr*)&from, &fromlen) != SOCKET_ERROR)
 		{
 			//compute crc
@@ -84,9 +84,7 @@ int server_mode()
 					return EXIT_FAILURE;
 				}
 				char *ptr = (char*)calloc(4, sizeof(char));
-				int idx = 0;
-				int ptrIdx = 0;
-				int bracket = 0;
+				int idx = 0, ptrIdx = 0, bracket = 0;
 				for (int i = 0; i<sizeof(buffer); i++)
 				{
 					char c = buffer[i];
@@ -111,7 +109,6 @@ int server_mode()
 				free(received_data);
 				fclose(fp);
 			}
-			//SHA256=
 			else if (strstr(buffer, "SHA256"))
 			{
 				for (int i = 0; i < SHA256_SIZE; i++) {
@@ -128,11 +125,13 @@ int server_mode()
 
 			if (break_flag) break;
 		}
+		//TODO implement ARQ
+		
 	}
 	fclose(fp);
 	closesocket(socketS);
 
-	printf("Transfer: %s\n", verify_sha256(fname, sha256) ? "OK" : "ERROR");
+	printf("\nTransfer: %s\n", verify_sha256(fname, sha256) ? "OK" : "ERROR");
 
 	//if (fname) free(fname);
 	return EXIT_SUCCESS;

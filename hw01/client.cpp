@@ -1,18 +1,11 @@
 #include "stdafx.h"
 
+
+void send_data(char *buffer, size_t size_of_buffer);
+
 int client_mode()
 {
-	char packet[PACKET_MAX_LEN + CRC32_SIZE];
-	SOCKET socketC;
-
 	init_winsock();
-	struct sockaddr_in serverInfo;
-	int len = sizeof(serverInfo);
-	serverInfo.sin_family = AF_INET;
-	serverInfo.sin_port = htons(PORT);
-	serverInfo.sin_addr.s_addr = inet_addr(IP_ADDRESS);
-
-	socketC = socket(AF_INET, SOCK_DGRAM, 0);
 
 	printf("File path: ");
 	char fname[PATH_MAX_LEN];
@@ -38,53 +31,25 @@ int client_mode()
 	//sedn file name
 	strcpy(buffer, "NAME=");
 	strcat(buffer, fname);
-	//crc
-	char * crc = compute_crc32(buffer);
-	strcpy(packet, crc);
-	strcat(packet, buffer);
-	printf("%s -- %s\n", crc, buffer);
-	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
-	ZeroMemory(buffer, sizeof(buffer));
-	ZeroMemory(packet, sizeof(packet));
+	send_data(buffer, sizeof(buffer));
 
 	//send size
 	strcpy(buffer, "SIZE=");
 	//cast int to the char array
 	char fsizeString[sizeof(int) * 3 + 2];
 	snprintf(fsizeString, sizeof fsizeString, "%d", fsize);
-	strcat(buffer, fsizeString);
-	//crc
-	crc = compute_crc32(buffer);
-	strcpy(packet, crc);
-	strcat(packet, buffer);
-	printf("%s -- %s\n",crc, buffer);
-	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
-	ZeroMemory(buffer, sizeof(buffer));
-	ZeroMemory(packet, sizeof(packet));
+	strcat(buffer, fsizeString);	
+	send_data(buffer, sizeof(buffer));
 
 	//send sha256
 	char *sha256 = compute_sha256(fname);
 	strcpy(buffer, "SHA256=");
 	strcat(buffer, sha256);
-	//crc
-	crc = compute_crc32(buffer);
-	strcpy(packet, crc);
-	strcat(packet, buffer);
-	printf("%s -- %s\n", crc, buffer);
-	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
-	ZeroMemory(buffer, sizeof(buffer));
-	ZeroMemory(packet, sizeof(packet));
-	
+	send_data(buffer, sizeof(buffer));
+
 	//send START
-	strcpy(buffer, "START");
-	//crc
-	crc = compute_crc32(buffer);
-	strcpy(packet, crc);
-	strcat(packet, buffer);
-	printf("%s -- %s\n", crc, buffer);
-	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
-	ZeroMemory(buffer, sizeof(buffer));
-	ZeroMemory(packet, sizeof(packet));
+	strcpy(buffer, "START");	
+	send_data(buffer, sizeof(buffer));
 
 	int data_to_read = fsize;
 	uint32_t fposition = ftell(fp);
@@ -122,29 +87,40 @@ int client_mode()
 			data[data_to_read + 1] = '\0';
 		}
 		strcat(buffer, data);
-		//crc
-		crc = compute_crc32(buffer);
-		strcpy(packet, crc);
-		strcat(packet, buffer);
-		printf("%s -- %s\n", crc, buffer);
-		sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
-		ZeroMemory(buffer, sizeof(buffer));
-		ZeroMemory(packet, sizeof(packet));
-
+		send_data(buffer, sizeof(buffer));
+	
 		fposition = ftell(fp);
 	}
 	fclose(fp);
 	//send STOP
 	strcpy(buffer, "STOP");
-	crc = compute_crc32(buffer);
+	send_data(buffer, sizeof(buffer));
+	
+	return EXIT_SUCCESS;
+}
+
+
+void send_data(char *buffer, size_t size_of_buffer) {
+	char packet[PACKET_MAX_LEN + CRC32_SIZE];
+	SOCKET socketC;
+
+	struct sockaddr_in serverInfo;
+	int len = sizeof(serverInfo);
+	serverInfo.sin_family = AF_INET;
+	serverInfo.sin_port = htons(PORT_SERVER);
+	serverInfo.sin_addr.s_addr = inet_addr(IP_ADDRESS_SERVER);
+
+	socketC = socket(AF_INET, SOCK_DGRAM, 0);
+
+	char * crc = compute_crc32(buffer);
 	strcpy(packet, crc);
 	strcat(packet, buffer);
 	printf("%s -- %s\n", crc, buffer);
 	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
-	ZeroMemory(buffer, sizeof(buffer));
+	
+	//TODO implement ARQ stop-and-wait
+
+	ZeroMemory(buffer, size_of_buffer);
 	ZeroMemory(packet, sizeof(packet));
-
 	closesocket(socketC);
-	return EXIT_SUCCESS;
-
 }
