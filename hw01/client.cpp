@@ -56,22 +56,9 @@ int client_mode()
 	while (!feof(fp) && fposition < fsize)
 	{
 		strcpy(buffer, "DATA{");
-		//weird workaround	
-		FILE *tmp = fopen("tmp.txt", "wb");
-		fwrite(&fposition, sizeof(uint32_t), 1, tmp);
-		fclose(tmp);
-		Sleep(50);
-
-		FILE *read = fopen("tmp.txt", "rb");
-		char tmpData[4];
-		fread(tmpData, sizeof(uint32_t), 1, read);
-		for (int i = 0; i < 4; i++)
-		{
-			buffer[i + 5] = tmpData[i];
-		}
-		fclose(read);
-		
+		strcat(buffer, (char*)&fposition);
 		strcat(buffer, "}{");
+		
 		char data[PACKET_MAX_LEN - 11];
 		if (data_to_read > PACKET_MAX_LEN - 14)
 		{
@@ -166,7 +153,7 @@ int arq_stopnwait(long int segment_id) {
 	int n = select(socketS, &fds, NULL, NULL, &tv);
 	if (n == 0)
 	{
-		printf("Timout reached. Resending segment: %" PRIu32 "\n", segment_id);
+		printf("Timeout reached. Resending segment: %" PRIu32 "\n", segment_id);
 		closesocket(socketS);
 		return FALSE;
 	}
@@ -180,7 +167,7 @@ int arq_stopnwait(long int segment_id) {
 	char packet[PACKET_MAX_LEN + CRC32_SIZE];
 	if (recvfrom(socketS, packet, sizeof(packet), 0, (sockaddr*)&from, &fromlen) < 0) {
 		//timeout reached
-		printf("Timout reached. Resending segment: %" PRIu32 "\n", segment_id);
+		printf("Timeout reached. Resending segment: %" PRIu32 "\n", segment_id);
 		closesocket(socketS);
 		return FALSE;
 	}

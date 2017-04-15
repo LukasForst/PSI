@@ -1,23 +1,5 @@
 #include "stdafx.h"
-
-void send_confirm() {
-	SOCKET socketC;
-
-	struct sockaddr_in serverInfo;
-	int len = sizeof(serverInfo);
-	serverInfo.sin_family = AF_INET;
-	serverInfo.sin_port = htons(PORT_CLIENT);
-	serverInfo.sin_addr.s_addr = inet_addr(IP_ADDRESS_CLIENT);
-	socketC = socket(AF_INET, SOCK_DGRAM, 0);
-
-	char packet[3];
-	packet[0] = 'O';
-	packet[1] = 'K';
-	packet[2] = '\0';
-	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
-	ZeroMemory(packet, sizeof(packet));
-	closesocket(socketC);
-}
+void send_confirm(uint32_t packet_number);
 
 int server_mode()
 {
@@ -143,7 +125,7 @@ int server_mode()
 
 		}
 		//TODO implement ARQ
-		send_confirm();
+		send_confirm(0);
 		if (break_flag) break;
 	}
 	fclose(fp);
@@ -153,4 +135,20 @@ int server_mode()
 
 	//if (fname) free(fname);
 	return EXIT_SUCCESS;
+}
+
+void send_confirm(uint32_t packet_number) {
+	SOCKET socketC;
+
+	struct sockaddr_in serverInfo;
+	int len = sizeof(serverInfo);
+	serverInfo.sin_family = AF_INET;
+	serverInfo.sin_port = htons(PORT_CLIENT);
+	serverInfo.sin_addr.s_addr = inet_addr(IP_ADDRESS_CLIENT);
+	socketC = socket(AF_INET, SOCK_DGRAM, 0);
+
+	char packet[] = { 'O', 'K' };
+	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
+	ZeroMemory(packet, sizeof(packet));
+	closesocket(socketC);
 }

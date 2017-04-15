@@ -13,6 +13,15 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\crypto">
+      <UniqueIdentifier>{adfa6ffa-251e-4a2a-b37b-eab0cd0e9409}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\client_server">
+      <UniqueIdentifier>{4a440bf7-1951-49be-857d-f4b915e265e9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\crypto">
+      <UniqueIdentifier>{11ed8ba9-5ea9-40f5-a957-e111ebdee108}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -25,36 +34,36 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="hash-library\crc32.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="hash-library\sha256.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\crypto</Filter>
     </ClInclude>
     <ClInclude Include="crypto.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="hash-library\sha256.h">
+      <Filter>Header Files\crypto</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="hash-library\sha256.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="hash-library\crc32.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="client.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="server.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="crypto.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="start.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hash-library\crc32.cpp">
+      <Filter>Source Files\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="crypto.cpp">
+      <Filter>Source Files\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="hash-library\sha256.cpp">
+      <Filter>Source Files\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="server.cpp">
+      <Filter>Source Files\client_server</Filter>
+    </ClCompile>
+    <ClCompile Include="client.cpp">
+      <Filter>Source Files\client_server</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
