@@ -27,7 +27,7 @@ int client_mode()
 		return EXIT_FAILURE;
 	}
 	char buffer[PACKET_MAX_LEN];
-	
+
 	//sedn file name
 	strcpy(buffer, "NAME=");
 	strcat(buffer, fname);
@@ -38,7 +38,7 @@ int client_mode()
 	//cast int to the char array
 	char fsizeString[sizeof(int) * 3 + 2];
 	snprintf(fsizeString, sizeof fsizeString, "%d", fsize);
-	strcat(buffer, fsizeString);	
+	strcat(buffer, fsizeString);
 	send_data(buffer, sizeof(buffer));
 
 	//send sha256
@@ -48,7 +48,7 @@ int client_mode()
 	send_data(buffer, sizeof(buffer));
 
 	//send START
-	strcpy(buffer, "START");	
+	strcpy(buffer, "START");
 	send_data(buffer, sizeof(buffer));
 
 	int data_to_read = fsize;
@@ -58,7 +58,7 @@ int client_mode()
 		strcpy(buffer, "DATA{");
 		strcat(buffer, (char*)&fposition);
 		strcat(buffer, "}{");
-		
+
 		char data[PACKET_MAX_LEN - 11];
 		if (data_to_read > PACKET_MAX_LEN - 14)
 		{
@@ -75,14 +75,14 @@ int client_mode()
 		}
 		strcat(buffer, data);
 		send_data(buffer, sizeof(buffer));
-	
+
 		fposition = ftell(fp);
 	}
 	fclose(fp);
 	//send STOP
 	strcpy(buffer, "STOP");
 	send_data(buffer, sizeof(buffer));
-	
+
 	return EXIT_SUCCESS;
 }
 
@@ -99,7 +99,7 @@ void send_data(char *buffer, size_t size_of_buffer) {
 	serverInfo.sin_family = AF_INET;
 	serverInfo.sin_port = htons(PORT_SERVER);
 	serverInfo.sin_addr.s_addr = inet_addr(IP_ADDRESS_SERVER);
-	
+
 	socketC = socket(AF_INET, SOCK_DGRAM, 0);
 
 	char * crc = compute_crc32(buffer);
@@ -107,7 +107,7 @@ void send_data(char *buffer, size_t size_of_buffer) {
 	strcat(packet, buffer);
 	printf("%" PRIu32 " - %s -- %s\n", socket_id, crc, buffer);
 	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
-	
+
 	//TODO implement ARQ stop-and-wait
 	if (arq_stopnwait(socket_id)) {
 		ZeroMemory(buffer, size_of_buffer);
@@ -122,6 +122,7 @@ void send_data(char *buffer, size_t size_of_buffer) {
 			exit(100);
 		}
 		same_packet++;
+		closesocket(socketC);
 		send_data(buffer, size_of_buffer);
 	}
 }
