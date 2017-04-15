@@ -22,6 +22,7 @@ int server_mode()
 	char sha256[SHA256_SIZE];
 	int fsize;
 	FILE *fp;
+	int break_flag = 0;
 	while (true)
 	{
 		char packet[PACKET_MAX_LEN + CRC32_SIZE];
@@ -67,8 +68,7 @@ int server_mode()
 				free(file_size);
 			}
 			else if (strstr(buffer, "STOP")) {
-				printf("STOP\n");
-				break;
+				break_flag = 1;
 			}
 			else if (strstr(buffer, "DATA"))
 			{
@@ -118,14 +118,21 @@ int server_mode()
 					sha256[i] = buffer[i + 7];
 				}
 			}
-			printf("%s\n", buffer);
-			printf("Verify CRC: %d\n", verify_crc32(crc, buffer));
+			printf("%s -- CRC ", buffer);
+			if (verify_crc32(crc, buffer)) {
+				printf("OK\n");
+			}
+			else {
+				printf("ERROR");
+			}
+
+			if (break_flag) break;
 		}
 	}
 	fclose(fp);
 	closesocket(socketS);
 
-	printf("Transfer: %d\n", verify_sha256(fname, sha256));
+	printf("Transfer: %s\n", verify_sha256(fname, sha256) ? "OK" : "ERROR");
 
 	//if (fname) free(fname);
 	return EXIT_SUCCESS;
