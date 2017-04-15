@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <cstdint>
 #include <iostream>
+#include <inttypes.h>
 
 #pragma comment (lib, "ws2_32.lib")
 #pragma warring(disable: 4996)
@@ -25,9 +26,16 @@
 #define PORT_SERVER 4000
 
 #define IP_ADDRESS_CLIENT "127.0.0.1"
-#define PORT_CLIENT 4001
+#define PORT_CLIENT 3840
+
+#define TIMEOUT_S 10000
+#define PACKET_MAX_LOSS 4
+
+#define TRUE 1
+#define FALSE 0
 
 #define _CRT_SECURE_NO_WARNINGS 1
+
 
 
 int server_mode();

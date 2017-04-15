@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
-
 void send_data(char *buffer, size_t size_of_buffer);
+int arq_stopnwait(long int segment_id);
 
 int client_mode()
 {
@@ -99,8 +99,11 @@ int client_mode()
 	return EXIT_SUCCESS;
 }
 
+static uint32_t socket_id = 0;
+static uint32_t same_packet = 0;
 
 void send_data(char *buffer, size_t size_of_buffer) {
+
 	char packet[PACKET_MAX_LEN + CRC32_SIZE];
 	SOCKET socketC;
 
@@ -109,18 +112,78 @@ void send_data(char *buffer, size_t size_of_buffer) {
 	serverInfo.sin_family = AF_INET;
 	serverInfo.sin_port = htons(PORT_SERVER);
 	serverInfo.sin_addr.s_addr = inet_addr(IP_ADDRESS_SERVER);
-
+	
 	socketC = socket(AF_INET, SOCK_DGRAM, 0);
 
 	char * crc = compute_crc32(buffer);
 	strcpy(packet, crc);
 	strcat(packet, buffer);
-	printf("%s -- %s\n", crc, buffer);
+	printf("%" PRIu32 " - %s -- %s\n", socket_id, crc, buffer);
 	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
 	
 	//TODO implement ARQ stop-and-wait
+	if (arq_stopnwait(socket_id)) {
+		ZeroMemory(buffer, size_of_buffer);
+		ZeroMemory(packet, sizeof(packet));
+		closesocket(socketC);
+		socket_id++;
+		same_packet = 0;
+	}
+	else {
+		if (same_packet > PACKET_MAX_LOSS) {
+			printf("Connection ERROR!\nMore then %d packets were lost!\n", PACKET_MAX_LOSS);
+			exit(100);
+		}
+		same_packet++;
+		send_data(buffer, size_of_buffer);
+	}
+}
 
-	ZeroMemory(buffer, size_of_buffer);
-	ZeroMemory(packet, sizeof(packet));
-	closesocket(socketC);
+int arq_stopnwait(long int segment_id) {
+	SOCKET socketS;
+	struct sockaddr_in local;
+	struct sockaddr_in from;
+	int fromlen = sizeof(from);
+
+	//set outcomming socket
+	local.sin_family = AF_INET;
+	local.sin_port = htons(PORT_CLIENT);
+	local.sin_addr.s_addr = INADDR_ANY;
+
+	socketS = socket(AF_INET, SOCK_DGRAM, 0);
+	bind(socketS, (sockaddr*)&local, sizeof(local));
+
+
+	struct timeval tv;
+	tv.tv_sec = TIMEOUT_S;
+	tv.tv_usec = 0;
+
+	// Set up the file descriptor set.
+	fd_set fds;
+	FD_ZERO(&fds);
+	FD_SET(socketS, &fds);
+	// Wait until timeout or data received.
+	int n = select(socketS, &fds, NULL, NULL, &tv);
+	if (n == 0)
+	{
+		printf("Timout reached. Resending segment: %" PRIu32 "\n", segment_id);
+		closesocket(socketS);
+		return FALSE;
+	}
+	else if (n == -1)
+	{
+		printf("Error..\n");
+		closesocket(socketS);
+		return FALSE;
+	}
+
+	char packet[PACKET_MAX_LEN + CRC32_SIZE];
+	if (recvfrom(socketS, packet, sizeof(packet), 0, (sockaddr*)&from, &fromlen) < 0) {
+		//timeout reached
+		printf("Timout reached. Resending segment: %" PRIu32 "\n", segment_id);
+		closesocket(socketS);
+		return FALSE;
+	}
+	closesocket(socketS);
+	return TRUE;
 }

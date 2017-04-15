@@ -1,8 +1,26 @@
 #include "stdafx.h"
 
+void send_confirm() {
+	SOCKET socketC;
+
+	struct sockaddr_in serverInfo;
+	int len = sizeof(serverInfo);
+	serverInfo.sin_family = AF_INET;
+	serverInfo.sin_port = htons(PORT_CLIENT);
+	serverInfo.sin_addr.s_addr = inet_addr(IP_ADDRESS_CLIENT);
+	socketC = socket(AF_INET, SOCK_DGRAM, 0);
+
+	char packet[3];
+	packet[0] = 'O';
+	packet[1] = 'K';
+	packet[2] = '\0';
+	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
+	ZeroMemory(packet, sizeof(packet));
+	closesocket(socketC);
+}
+
 int server_mode()
 {
-
 	SOCKET socketS;
 
 	init_winsock();
@@ -123,10 +141,10 @@ int server_mode()
 				printf("ERROR");
 			}
 
-			if (break_flag) break;
 		}
 		//TODO implement ARQ
-		
+		send_confirm();
+		if (break_flag) break;
 	}
 	fclose(fp);
 	closesocket(socketS);
