@@ -1,12 +1,15 @@
 #include "stdafx.h"
+#include <sstream>      // std::stringstream
+#include <time.h>
 
 void send_data(char *buffer, size_t size_of_buffer);
 int arq_stopnwait(long int segment_id);
 
+uint32_t speed = 1000;
+
 int client_mode()
 {
 	init_winsock();
-
 	printf("File path: ");
 	char fname[PATH_MAX_LEN];
 	ZeroMemory(fname, sizeof(fname));
@@ -56,7 +59,7 @@ int client_mode()
 	while (!feof(fp) && fposition < fsize)
 	{
 		strcpy(buffer, "DATA{");
-		strcat(buffer, (char*)&fposition);
+		strcat(buffer, (char*) &fposition);
 		strcat(buffer, "}{");
 
 		char data[PACKET_MAX_LEN - 11];
@@ -88,10 +91,21 @@ int client_mode()
 
 static uint32_t socket_id = 0;
 static uint32_t same_packet = 0;
+static clock_t last_sent = 0;
 
 void send_data(char *buffer, size_t size_of_buffer) {
+	if (last_sent == 0) {
+		last_sent = clock();
+	} else {
+		double time_from_sent = (double)(clock() - last_sent) / CLOCKS_PER_SEC;
+		while (time_from_sent < speed) {
+			Sleep(50);
+			time_from_sent = (double)(clock() - last_sent) / CLOCKS_PER_SEC;
+		}
+		last_sent = clock();
+	}
 
-	char packet[PACKET_MAX_LEN + CRC32_SIZE];
+	char packet[PACKET_MAX_LEN + CRC32_SIZE + 4];
 	SOCKET socketC;
 
 	struct sockaddr_in serverInfo;
@@ -102,12 +116,14 @@ void send_data(char *buffer, size_t size_of_buffer) {
 
 	socketC = socket(AF_INET, SOCK_DGRAM, 0);
 
+	//TODO insert packet number
 	char * crc = compute_crc32(buffer);
 	strcpy(packet, crc);
 	strcat(packet, buffer);
-	printf("%" PRIu32 " - %s -- %s\n", socket_id, crc, buffer);
+	
+	printf("%" PRIu32 " - %s -- %s", socket_id, crc, buffer);
 	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
-
+	
 	//TODO implement ARQ stop-and-wait
 	if (arq_stopnwait(socket_id)) {
 		ZeroMemory(buffer, size_of_buffer);
@@ -166,12 +182,41 @@ int arq_stopnwait(long int segment_id) {
 	}
 
 	char packet[PACKET_MAX_LEN + CRC32_SIZE];
+	//uint32_t packet = 10;
 	if (recvfrom(socketS, packet, sizeof(packet), 0, (sockaddr*)&from, &fromlen) < 0) {
 		//timeout reached
 		printf("Timeout reached. Resending segment: %" PRIu32 "\n", segment_id);
 		closesocket(socketS);
 		return FALSE;
 	}
+	//printf("- %s\n", packet);
+	
+	int bracket1 = 0, bracket2 = 0, idx_socktets_per_sec = 0, idx_socket_number = 0;
+	char socktets_per_sec[PACKET_MAX_LEN], socket_number[PACKET_MAX_LEN];
+	for (int i = 0; packet[i] != '\0'; i++) {
+		if (packet[i] == '{') {
+			bracket1++;
+		}
+		else if (packet[i] == '}') {
+			bracket2++;
+		}
+		else {
+			if (bracket1 < 2) {
+				socket_number[idx_socket_number++] = packet[i];
+			}
+			else {
+				socktets_per_sec[idx_socktets_per_sec++] = packet[i];
+			}
+		}
+		if (bracket2 == 2) {
+			break;
+			socket_number[idx_socket_number++] = '\0';
+			socktets_per_sec[idx_socktets_per_sec++] = '\0';
+		}
+	}
+	speed = atoi(socktets_per_sec);
+	uint32_t socket_num = atoi(socket_number);
+	printf(" - N:%d, S: %d\n", socket_num, speed);
 	closesocket(socketS);
 	return TRUE;
 }

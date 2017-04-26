@@ -1,4 +1,6 @@
 #include "stdafx.h"
+#define DEFAULT_SPEED 3 //seconds between packtets
+
 void send_confirm(uint32_t packet_number);
 
 int server_mode()
@@ -23,14 +25,16 @@ int server_mode()
 	int fsize;
 	FILE *fp;
 	int break_flag = 0;
+	uint32_t socket_id = 0;
 	while (true)
 	{
-		char packet[PACKET_MAX_LEN + CRC32_SIZE];
+		char packet[PACKET_MAX_LEN + CRC32_SIZE + 4];
 		ZeroMemory(packet, sizeof(packet));
 
 		if (recvfrom(socketS, packet, sizeof(packet), 0, (sockaddr*)&from, &fromlen) != SOCKET_ERROR)
 		{
 			//compute crc
+			printf("%d - ", socket_id++);
 			char crc[CRC32_SIZE];
 			for (int i = 0; i < CRC32_SIZE; i++) {
 				printf("%c", packet[i]);
@@ -117,15 +121,15 @@ int server_mode()
 			}
 			printf("%s -- CRC ", buffer);
 			if (verify_crc32(crc, buffer)) {
-				printf("OK\n");
+				printf("OK - ");
 			}
 			else {
-				printf("ERROR");
+				printf("ERROR\n");
 			}
 
 		}
 		//TODO implement ARQ
-		send_confirm(0);
+		send_confirm(socket_id);
 		if (break_flag) break;
 	}
 	fclose(fp);
@@ -146,9 +150,14 @@ void send_confirm(uint32_t packet_number) {
 	serverInfo.sin_port = htons(PORT_CLIENT);
 	serverInfo.sin_addr.s_addr = inet_addr(IP_ADDRESS_CLIENT);
 	socketC = socket(AF_INET, SOCK_DGRAM, 0);
-
-	char packet[] = { 'O', 'K' };
-	sendto(socketC, packet, sizeof(packet), 0, (sockaddr*)&serverInfo, len);
-	ZeroMemory(packet, sizeof(packet));
+	//{10}{1000} - aka - {packet number}{speed}
+	//uint32_t socktets_per_sec = 9999999999999;
+	uint32_t socktets_per_sec = DEFAULT_SPEED;
+	
+	char data[PACKET_MAX_LEN];
+	char tmp[100], tmp2[100];
+	sprintf(data, "{%s}{%s}", itoa(packet_number, tmp2, 10), itoa(socktets_per_sec, tmp, 10));
+	printf("%s\n", data);
+	sendto(socketC,data, sizeof(data), 0, (sockaddr*)&serverInfo, len);
 	closesocket(socketC);
 }
